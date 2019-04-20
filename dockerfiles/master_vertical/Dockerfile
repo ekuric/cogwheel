@@ -9,8 +9,8 @@ ENV HOME /root
 USER root
 
 # Install dependencies and clone svt repo
-RUN yum clean all && yum install epel-release -y && yum install -y git ansible which golang wget tmux jq && \
-    git clone https://github.com/chaitanyaenr/cogwheel.git /root/cogwheel && mkdir -p /root/.kube && \
+RUN yum clean all && yum install epel-release -y && yum install -y python-pip python-s3transfer python-boto3 git python-rbd python-flask git ansible which golang wget tmux jq && \
+    git clone https://github.com/openshift/svt.git /root/svt && git clone https://github.com/chaitanyaenr/cogwheel.git /root/cogwheel && mkdir -p /root/.kube && \
     curl -L https://mirror.openshift.com/pub/openshift-v3/clients/4.1.0-201904090034.git.0.1016bda.el7/linux/oc.tar.gz | tar -zx && mv oc /usr/local/bin
 
 # Copy openshift-tests binary from openshift/origin-tests:v4.0 image
