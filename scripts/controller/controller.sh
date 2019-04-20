@@ -26,8 +26,8 @@ function cleanup() {
 }
 
 # Ensure that the host has congwheel repo cloned
-if [[ ! -d $cogwheel_repo_location ]]; then
-	 git clone https://github.com/chitanyaenr/cogwheel.git
+if [[ ! -d $cogwheel_repo_location/cogwheel ]]; then
+	 git clone https://github.com/chaitanyaenr/cogwheel.git $cogwheel_repo_location/cogwheel
 fi
 
 # Check if the project already exists
@@ -39,7 +39,8 @@ fi
 
 # create controller ns, configmap, job to run the scale test
 oc create -f $cogwheel_repo_location/cogwheel/openshift-templates/controller/controller-ns.yml
-oc create configmap scale-config --from-file=$properties_file_path --from-literal=kubeconfig="$(cat $kubeconfig_path)" -n $controller_namespace
+oc create configmap kube-config --from-literal=kubeconfig="$(cat $kubeconfig_path)" -n $controller_namespace
+oc create configmap scale-config --from-env-file=$properties_file_path -n $controller_namespace
 oc process -p SCALE_TEST_IMAGE=$scale_test_image -f $cogwheel_repo_location/cogwheel/openshift-templates/controller/controller-job-template.yml | oc create -n $controller_namespace -f -
 sleep $wait_time
 controller_pod=$(oc get pods -n $controller_namespace | grep "controller" | awk '{print $1}')

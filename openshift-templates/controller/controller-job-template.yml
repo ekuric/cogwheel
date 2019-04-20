@@ -28,6 +28,12 @@ objects:
            envFrom:
            - configMapRef:
                name: scale-config
+           env:
+             - name: kubeconfig
+               valueFrom:
+                 configMapKeyRef:
+                   name: kube-config
+                   key: kubeconfig
          restartPolicy: Never 
 parameters:
 - description: image used to run the scale test
