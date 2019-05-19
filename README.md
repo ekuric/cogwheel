@@ -1,6 +1,8 @@
 # CogWheel
 OpenShift Scale Tests Orchestrator
 
+![Alt text](logo/cogwheel.png)
+
 ### Dependencies
 ```
 - Git
@@ -31,8 +33,19 @@ Options supported:
 	 prometheus_db_path=str,        str=path to export the prometheus DB
 ```
 
+Images supported:
+
+Image | Description | Privileged | Scale Cluster | Starter | OSD |
+----- | ----------- | ---------- | ------------- | ------- | --- |
+ravielluri/image:nodevertical | kubelet density focused test which creates max pods per compute node | False | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+ravielluri/image:mastervertial | control plane density focused test | False | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+BYO ( Bring your own workload ) | Any image which works on OCP cluster | True/False ( False is preferred for it to work on Starter and OSD clusters | NA | NA | NA |
+
 Set the environment variables in cogwheel_env.sh and source it. Available options:
 ```
 $ source cogwheel_env.sh
 $ ./cogwheel.sh
 ```
+
+#### Credits
+Created my free logo at LogoMakr.com.
