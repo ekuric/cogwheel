@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ "$#" -ne 1 ]; then
+if [[ "$#" -ne 1 ]]; then
   echo "syntax: $0 <kubeconfig_path>"
   exit 1
 fi

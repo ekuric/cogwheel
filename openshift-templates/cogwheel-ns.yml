@@ -3,4 +3,4 @@ kind: Namespace
 metadata:
   annotations:
     openshift.io/node-selector: ""
-  name: controller
+  name: cogwheel
