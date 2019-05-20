@@ -15,6 +15,8 @@ function help () {
         printf "\t properties_file_path=str,      str=path to the properties file\n"
         printf "\t capture_prometheus_db=str,     str=true or false\n"
         printf "\t prometheus_db_path=str,        str=path to export the prometheus DB\n"
+	printf "\t pbench=str,                    str=true or false\n"
+	printf "\t results_server=str,            str=server to copy the results captured including promtheus\n"
 }
 
 
@@ -24,56 +26,21 @@ if [[ "$#" -ne 0 ]]; then
 	exit 1
 fi
 
+# options
+cogwheel_options=( cogwheel_repo_location scale_test_image kubeconfig_path properties_file_path capture_prometheus_db prometheus_db_path run_scale_test cleanup pbench results_server )
+
 # Check if the vars have been defined
-if [[ -z "$cogwheel_repo_location" ]]; then
-	echo "cogwheel_repo_location is not defined, please check if it's defined as an environment variable"
-	help
-	exit 1
-fi
+for option in ${cogwheel_options[*]}; do
+	if [[ -z "$option" ]]; then
+		echo "$option is not defined, please check if it's defined as an environment variable"
+		help
+		exit 1
+	fi
+done
 
-if [[ -z "$scale_test_image" ]]; then
-        echo "scale_test_image is not defined, please check if it's defined as an environment variable"
-	help
-        exit 1
-fi
-
-if [[ -z "$kubeconfig_path" ]]; then
-        echo "kubeconfig_path is not defined, please check if it's defined as an environment variable"
-	help
-        exit 1
-fi
-
-if [[ -z "$properties_file_path" ]]; then
-        echo "properties_file_path is not defined, please check if it's defined as an environment variable"
-	help
-        exit 1
-fi
-
-if [[ -z "$capture_prometheus_db" ]]; then
-        echo "capture_prometheus_db is not defined, please check if it's defined as an environment variable"
-	help
-        exit 1
-fi
-
-if [[ -z "$prometheus_db_path" ]]; then
-        echo "prometheus_db_path is not defined, please check if it's defined as an environment variable"
-        help
-        exit 1
-fi
-
-if [[ -z "$run_scale_test" ]]; then
-	echo "run_scale_test is not defined, please check it's defined as an env variable"
-	help
-	exit 1
-fi
-
-if [[ -z "$cleanup" ]]; then
-        echo "cleanup is not defined, please check if it's defined as an environment variable"
-	exit 1
-fi
 
 # Defaults
-controller_namespace=controller
+cogwheel_namespace=cogwheel
 counter_time=5
 wait_time=25
 prometheus_namespace=openshift-monitoring
@@ -82,7 +49,7 @@ export KUBECONFIG=$kubeconfig_path
 
 # Cleanup
 function cleanup() {
-	oc delete project --wait=true $controller_namespace
+	oc delete project --wait=true $cogwheel_namespace
 	echo "sleeping for $wait_time for the cluster to settle"
 	sleep $wait_time
 }
@@ -107,24 +74,24 @@ function run_scale_test() {
 	fi
 
 	# Check if the project already exists
-	if [[ $(oc project $controller_namespace &>/dev/null) ]]; then
+	if oc project $controller_namespace &>/dev/null; then
         	echo "Looks like the $controller_namespace already exists, deleting it"
 		cleanup
 	fi
 
 	# create controller ns, configmap, job to run the scale test
-	oc create -f $cogwheel_repo_location/cogwheel/openshift-templates/controller/controller-ns.yml
-	oc create configmap kube-config --from-literal=kubeconfig="$(cat $kubeconfig_path)" -n $controller_namespace
-	oc create configmap scale-config --from-env-file=$properties_file_path -n $controller_namespace
-	oc process -p SCALE_TEST_IMAGE=$scale_test_image -f $cogwheel_repo_location/cogwheel/openshift-templates/controller/controller-job-template.yml | oc create -n $controller_namespace -f -
+	oc create -f $cogwheel_repo_location/cogwheel/openshift-templates/cogwheel-ns.yml
+	oc create configmap kube-config --from-literal=kubeconfig="$(cat $kubeconfig_path)" -n $cogwheel_namespace
+	oc create configmap scale-config --from-env-file=$properties_file_path -n $cogwheel_namespace
+	oc process -p SCALE_TEST_IMAGE=$scale_test_image -f $cogwheel_repo_location/cogwheel/openshift-templates/cogwheel-job-template.yml | oc create -n $cogwheel_namespace -f -
 	sleep $wait_time
-	controller_pod=$(oc get pods -n $controller_namespace | grep "controller" | awk '{print $1}')
+	cogwheel_pod=$(oc get pods -n $cogwheel_namespace | grep "cogwheel" | awk '{print $1}')
 	counter=0
-	while [[ $(oc --namespace=default get pods $controller_pod -n $controller_namespace -o json | jq -r ".status.phase") != "Running" ]]; do
+	while [[ $(oc --namespace=default get pods $cogwheel_pod -n $cogwheel_namespace -o json | jq -r ".status.phase") != "Running" ]]; do
 		sleep $counter_time
 		counter=$((counter+1))
 		if [[ $counter -ge 120 ]]; then
-			echo "Looks like the $controller_pod is not up after 120 sec, please check"
+			echo "Looks like the $cogwheel_pod is not up after 120 sec, please check"
 			exit 1
 		fi
 	done
@@ -132,19 +99,19 @@ function run_scale_test() {
 	# logging
 	logs_counter=0
 	logs_counter_limit=500
-	oc logs -f $controller_pod -n $controller_namespace
+	oc logs -f $cogwheel_pod -n $cogwheel_namespace
 	while true; do
         	logs_counter=$((logs_counter+1))
-        	if [[ $(oc --namespace=default get pods $controller_pod -n $controller_namespace -o json | jq -r ".status.phase") == "Running" ]]; then
+        	if [[ $(oc --namespace=default get pods $cogwheel_pod -n $cogwheel_namespace -o json | jq -r ".status.phase") == "Running" ]]; then
                 	if [[ $logs_counter -le $logs_counter_limit ]]; then
 				echo "=================================================================================================================================================================="
-				echo "Attempt $logs_counter to reconnect and fetch the controller pod logs"
+				echo "Attempt $logs_counter to reconnect and fetch the cogwheel pod logs"
 				echo "=================================================================================================================================================================="
 				echo "------------------------------------------------------------------------------------------------------------------------------------------------------------------"
 				echo "------------------------------------------------------------------------------------------------------------------------------------------------------------------"
-                        	oc logs -f $controller_pod -n $controller_namespace
+                        	oc logs -f $cogwheel_pod -n $cogwheel_namespace
                 	else
-                        	echo "Exceeded the retry limit trying to get the controller logs: $logs_counter_limit, exiting."
+                        	echo "Exceeded the retry limit trying to get the cogwheel logs: $logs_counter_limit, exiting."
                         	exit 1
                 	fi
         	else
@@ -153,9 +120,9 @@ function run_scale_test() {
         	fi
 	done
 
-	# check the status of the controller pod
-	while [[ $(oc --namespace=default get pods $controller_pod -n $controller_namespace -o json | jq -r ".status.phase") != "Succeeded" ]]; do
-		if [[ $(oc --namespace=default get pods $controller_pod -n $controller_namespace -o json | jq -r ".status.phase") == "Failed" ]]; then
+	# check the status of the cogwheel pod
+	while [[ $(oc --namespace=default get pods $cogwheel_pod -n $cogwheel_namespace -o json | jq -r ".status.phase") != "Succeeded" ]]; do
+		if [[ $(oc --namespace=default get pods $cogwheel_pod -n $cogwheel_namespace -o json | jq -r ".status.phase") == "Failed" ]]; then
    			echo "JOB FAILED"
 			echo "CLEANING UP"
    			cleanup
@@ -182,4 +149,12 @@ fi
 if [[ "$capture_prometheus_db" == true ]]; then
 	echo "Capturing prometheus DB"
 	promtheus_db_capture
+fi
+
+# ship prometheus DB
+if [[ "$copy_prometheus" == true ]]; then
+        if [[ "$pbench" == false ]] && [[ -n "$results_server" ]]; then
+                echo "copying the prometheus DB to $results_server"
+        	scp $prometheus_db_path/prometheus.tar.xz $results_server:$prometheus_db_path
+	fi
 fi

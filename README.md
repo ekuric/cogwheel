@@ -33,7 +33,7 @@ Options supported:
 	 prometheus_db_path=str,        str=path to export the prometheus DB
 ```
 
-Images supported:
+Images and OCP clusters supported:
 
 Image | Description | Privileged | Scale Cluster | Starter | OSD |
 ----- | ----------- | ---------- | ------------- | ------- | --- |
@@ -47,5 +47,20 @@ $ source cogwheel_env.sh
 $ ./cogwheel.sh
 ```
 
-#### Credits
+#### Using pbench for running cogwheel and prometheus tarball storage
+
+Assuming that the pbench - https://github.com/distributed-system-analysis/pbench is installed on the host on which cogwheel is running, kickoff cogwheel using pbench:
+
+```
+$ source cogwheel_env.sh
+$ pbench-user-benchmark -C <Test name> -- <cogwheel_dir>/coghweel.sh
+```
+
+Assuming that the pbench server is up and keys are setup correctly, move the results to the pbench server:
+```
+$ pbench-move-results --prefix=<prefix for the results>
+```
+Look for the cogwheel controller hostname for results at https://<pbench_server>/results.
+
+##### Credits
 Created my free logo at LogoMakr.com.
